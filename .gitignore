@@ -1,0 +1,25 @@
+# environment
+.env
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+
+# testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# snapshots (optional, remove if you want to commit them)
+snapshots/
+
+# editors
+.vscode/
+.idea/
+*.swp
