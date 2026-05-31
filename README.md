@@ -56,7 +56,6 @@ Only the key for your chosen judge provider is required.
 judge:
   provider: groq
   model: llama-3.3-70b-versatile
-  api_key: ${GROQ_API_KEY}
 
 tests:
   - name: refund policy
@@ -72,7 +71,7 @@ tests:
       - tone is polite
 ```
 
-`${ENV_VAR}` placeholders are resolved from your `.env` file at runtime.
+API keys are never declared in the config -- they are read from `.env` based on the provider.
 
 Supported judge providers: `groq`, `anthropic`, `openai`, `ollama`.
 
