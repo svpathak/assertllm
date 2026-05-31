@@ -3,7 +3,6 @@ from pydantic import BaseModel, Field, SecretStr
 class JudgeConfig(BaseModel):
     provider: str
     model: str
-    api_key: SecretStr | None = None
 
 class TestConfig(BaseModel):
     name: str
