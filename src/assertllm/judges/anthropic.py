@@ -1,14 +1,13 @@
-import anthropic
+from anthropic import Anthropic
+from pydantic import SecretStr
 from assertllm.judges.base import BaseJudge
 from assertllm.judges.utils import JudgeUtils
-from assertllm.models.schema import JudgeConfig
 
 
 class AnthropicJudge(BaseJudge):
-    def __init__(self, config: JudgeConfig) -> None:
-        api_key = config.api_key.get_secret_value() if config.api_key else None
-        self._client = anthropic.Anthropic(api_key=api_key)
-        self._model = config.model
+    def __init__(self, model: str, api_key: SecretStr | None) -> None:
+        self._client = Anthropic(api_key=api_key.get_secret_value() if api_key else None)
+        self._model = model
 
     def evaluate(self, response: str, assertions: list[str]) -> list[bool]:
         prompt = JudgeUtils.build_prompt(response, assertions)
