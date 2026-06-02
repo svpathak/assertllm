@@ -14,7 +14,7 @@ tests:
       - tone is polite
 
   - name: refund policy (fail)
-    endpoint: http://localhost:8000/chat/fail
+    endpoint: http://127.0.0.1:8000/chat/fail
     method: POST
     body:
       message: "What is your return policy?"
@@ -24,7 +24,7 @@ tests:
       - tone is polite
 
   - name: summarizer (pass)
-    endpoint: http://localhost:8000/summarize
+    endpoint: http://127.0.0.1:8000/summarize
     method: POST
     body:
       text: "The quarterly earnings exceeded expectations by 12%."

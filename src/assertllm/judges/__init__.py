@@ -4,6 +4,7 @@ from assertllm.judges.groq import GroqJudge
 from assertllm.judges.openai import OpenAIJudge
 from assertllm.models.schema import JudgeConfig
 from assertllm.settings import settings
+from assertllm.constants.providers import SUPPORTED_PROVIDERS, PROVIDERS_REQUIRING_KEY
 
 
 def get_judge(config: JudgeConfig) -> BaseJudge:
