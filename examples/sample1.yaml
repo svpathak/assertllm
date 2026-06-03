@@ -1,11 +1,11 @@
 judge:
-  provider: anthropic
-  model: claude-haiku-4-5
+  provider: groq
+  model: phi-3
 
 tests:
   - name: refund policy
-    endpoint: https://your-api.com/chat
-    method: ""
+    endpoint: https://localhost:8000/chat
+    method: DELETE
     body:
       message: "What is your return policy?"
     assert:
@@ -17,7 +17,7 @@ tests:
     endpoint: https://your-api.com/summarize
     method: POST
     body:
-      text: "The quarterly earnings exceeded expectations by 12%."
+      text: "The quarterly earnings exceeded expectations by 12%. This is a significant rise from expectations of 10.5%."
     assert:
       - contains the key financial result
       - does not add facts not present in the input

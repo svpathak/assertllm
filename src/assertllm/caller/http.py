@@ -9,7 +9,7 @@ def call_endpoint(test: TestConfig) -> str:
             url=str(test.endpoint),
             headers=test.headers,
             json=test.body,
-            timeout=30.0,
+            timeout=30.0
         )
         response.raise_for_status()
         return response.text
