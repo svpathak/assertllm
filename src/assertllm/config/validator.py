@@ -1,23 +1,21 @@
 from assertllm.models.schema import Config
 from assertllm.settings import settings
-
-PROVIDER_KEY_CHECK = {
-    "anthropic": ("anthropic_api_key", "ANTHROPIC_API_KEY"),
-    "openai": ("openai_api_key", "OPENAI_API_KEY"),
-    "groq": ("groq_api_key", "GROQ_API_KEY"),
-}
+from assertllm.constants.providers import PROVIDERS, SUPPORTED_PROVIDERS, PROVIDERS_REQUIRING_KEY
 
 
 def validate_config(config: Config) -> None:
     provider = config.judge.provider.lower()
 
-    if provider not in (*PROVIDER_KEY_CHECK, "ollama"):
-        raise ValueError(f"Unsupported judge provider: '{provider}'")
+    if provider not in SUPPORTED_PROVIDERS:
+        raise ValueError(
+            f"Unsupported judge provider: '{provider}'. "
+            f"Must be one of: {', '.join(sorted(SUPPORTED_PROVIDERS))}"
+        )
 
-    if provider in PROVIDER_KEY_CHECK:
-        attr, env_var = PROVIDER_KEY_CHECK[provider]
+    if provider in PROVIDERS_REQUIRING_KEY:
+        attr = PROVIDERS[provider]["settings_attr"]
         if getattr(settings, attr) is None:
-            raise ValueError(f"Judge provider '{provider}' requires {env_var} to be set in .env")
+            raise ValueError(f"{attr.upper()} is not set in .env")
 
     if not config.tests:
         raise ValueError("Config must define at least one test")
