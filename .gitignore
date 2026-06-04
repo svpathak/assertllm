@@ -18,6 +18,8 @@ htmlcov/
 
 # snapshots (optional, remove if you want to commit them)
 snapshots/
+logs/
+runs/
 
 # editors
 .vscode/
