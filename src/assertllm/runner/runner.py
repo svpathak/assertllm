@@ -56,7 +56,7 @@ def _run_test(test: TestConfig, judge: BaseJudge) -> TestResult:
             input=test.body,
             response=response,
             assertion_results=assertion_results,
-            duration_ms=duration_ms,
+            duration_ms=duration_ms
         )
     except Exception as e:
         duration_ms = int((time.monotonic() - start) * 1000)
@@ -64,7 +64,7 @@ def _run_test(test: TestConfig, judge: BaseJudge) -> TestResult:
             name=test.name,
             input=test.body,
             error=str(e),
-            duration_ms=duration_ms,
+            duration_ms=duration_ms
         )
 
 
@@ -90,7 +90,7 @@ def _save_run(config_path: str, results: list[TestResult]) -> Path:
                 "assertions": (
                     None if r.is_error else
                     [{"assertion": a.assertion, "passed": a.passed} for a in r.assertion_results]
-                ),
+                )
             }
             for r in results
         ],

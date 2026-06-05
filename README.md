@@ -104,6 +104,44 @@ Compare against a specific snapshot:
 assertllm diff config.yaml --snapshot snapshots/config_20250529_143022.json
 ```
 
+List all saved runs (latest first):
+```bash
+assertllm inspect --list
+```
+
+List runs for a specific config only:
+```bash
+assertllm inspect --list --config examples/sample1.yaml
+```
+
+Inspect the latest run:
+```bash
+assertllm inspect
+```
+
+Inspect the latest run for a specific config:
+```bash
+assertllm inspect --config examples/sample1.yaml
+```
+
+Inspect a specific run file:
+```bash
+assertllm inspect --run runs/sample1_20250604_103500.json
+```
+
+Filter to a single test within a run:
+```bash
+assertllm inspect --config examples/sample1.yaml --test "cricket agent - idk question"
+assertllm inspect --run runs/sample1_20250604_103500.json --test "cricket agent - idk question"
+```
+
+Argument rules for `inspect`:
+
+- `--list` and `--run` cannot be used together. `--list` shows available runs; `--run` inspects a specific one.
+- `--list` and `--test` cannot be used together. Use `--run` or `--config` with `--test` to inspect a specific run.
+- `--run` and `--config` cannot be used together. `--run` is a direct path to a file; `--config` is a hint to find the latest run for that config. Pick one.
+- `--test` requires either `--run` or `--config`. Without one of them it is ambiguous which run to filter from.
+
 Exit code is 0 on all pass, 1 on any failure. Plugs into GitHub Actions with no extra config.
 
 ---
@@ -117,6 +155,22 @@ FAIL summarizer -- 1/3 passed
 
 2 passed, 1 failed
 ```
+
+---
+
+## Runs
+
+Every `assertllm run` saves a structured JSON record under `runs/` in the current working directory:
+
+```
+runs/
+  sample1_20250604_103500.json
+  sample1_20250604_110200.json
+```
+
+Each record contains the input, raw endpoint response, assertion results, duration, and error state for every test. The `runs/` folder is gitignored by default.
+
+Use `assertllm inspect` to browse run output without opening the JSON files directly.
 
 ---
 
@@ -148,16 +202,22 @@ The raw response from the endpoint is passed to the judge as-is. The judge LLM f
 
 ## Local mock server
 
-A FastAPI mock server is included for testing without a real endpoint:
+A FastAPI mock server is included for testing without a real endpoint. It calls Groq under the hood with real system prompts, so you need `GROQ_API_KEY` set in your `.env`.
 
 ```bash
-pip install fastapi uvicorn
+pip install fastapi uvicorn python-dotenv
 uvicorn examples.mock_server.main:app --port 8000 --reload
 ```
 
+Endpoints:
+
+- `POST /chat` -- an angry cricket assistant. Answers cricket questions with attitude, refuses everything else rudely, apologises politely when it doesn't know a cricket answer.
+- `POST /summarize` -- a one-sentence summarizer. Condenses the input `text` field without adding facts.
+- `POST /error` -- always returns 500.
+
 Then run against it:
 ```bash
-assertllm run examples/test_mock.yaml
+assertllm run examples/sample1.yaml
 ```
 
 ---
@@ -168,8 +228,8 @@ Snapshots are saved under `snapshots/` in the current working directory, named a
 
 ```
 snapshots/
-  test_mock_20250529_143022.json
-  test_mock_20250530_091500.json
+  sample1_20250529_143022.json
+  sample1_20250530_091500.json
 ```
 
 `assertllm diff` auto-picks the latest snapshot for the given config. The `snapshots/` folder is gitignored by default.

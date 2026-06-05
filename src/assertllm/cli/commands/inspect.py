@@ -1,19 +1,73 @@
 import json
+import os
 import typer
 from pathlib import Path
 from rich.console import Console
 from rich.text import Text
+from assertllm.cli.errors import exit_with_error
 
 console = Console()
 
 
-def _latest_run(stem: str | None) -> Path | None:
+def _validate_args(
+    run_path: str | None,
+    config: str | None,
+    test: str | None,
+    list_runs: bool
+) -> None:
+    if list_runs and run_path:
+        exit_with_error(
+            "--list and --run cannot be used together.\n"
+            "--list shows available runs. --run inspects a specific one."
+        )
+
+    if list_runs and test:
+        exit_with_error(
+            "--list and --test cannot be used together.\n"
+            "--list shows available runs. Use --run or --config with --test to inspect a specific run."
+        )
+
+    if run_path and config:
+        exit_with_error(
+            "--run and --config cannot be used together.\n"
+            "--run points to a specific file directly.\n"
+            "Use --config only when you want the latest run for a given config."
+        )
+
+    if test and not run_path and not config:
+        exit_with_error(
+            "--test requires either --run or --config.\n"
+            "Use --run to point to a specific file, or --config to use the latest run for that config."
+        )
+
+
+def _all_runs(stem: str | None) -> list[Path]:
     runs_dir = Path.cwd() / "runs"
     if not runs_dir.exists():
-        return None
+        return []
     pattern = f"{stem}_*.json" if stem else "*.json"
-    matches = sorted(runs_dir.glob(pattern), reverse=True)
+    return sorted(
+        runs_dir.glob(pattern),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+
+
+def _latest_run(stem: str | None) -> Path | None:
+    matches = _all_runs(stem)
     return matches[0] if matches else None
+
+
+def _render_list(runs: list[Path]) -> None:
+    if not runs:
+        console.print("No runs found.", style="dim")
+        return
+
+    for run_path in runs:
+        try:
+            console.print(run_path.relative_to(Path.cwd()))
+        except ValueError:
+            console.print(run_path)
 
 
 def _render_test(test: dict) -> None:
@@ -56,7 +110,15 @@ def inspect_command(
     run_path: str | None = typer.Option(None, "--run", "-r", help="Path to a specific run file"),
     test: str | None = typer.Option(None, "--test", "-t", help="Filter to a specific test by name"),
     config: str | None = typer.Option(None, "--config", "-c", help="Filter runs by config file name"),
+    list_runs: bool = typer.Option(False, "--list", "-l", help="List all saved runs")
 ) -> None:
+    _validate_args(run_path, config, test, list_runs)
+
+    if list_runs:
+        stem = Path(config).stem if config else None
+        _render_list(_all_runs(stem))
+        return
+
     if run_path:
         resolved = Path(run_path)
     else:
@@ -64,8 +126,7 @@ def inspect_command(
         resolved = _latest_run(stem)
 
     if resolved is None or not resolved.exists():
-        typer.echo("No run file found. Run: assertllm run config.yaml first")
-        raise typer.Exit(1)
+        exit_with_error("No run file found. Run 'assertllm run config.yaml' first.")
 
     with open(resolved, "r") as f:
         record = json.load(f)
@@ -78,8 +139,7 @@ def inspect_command(
     if test:
         tests = [t for t in tests if t["name"] == test]
         if not tests:
-            typer.echo(f"No test named '{test}' in this run")
-            raise typer.Exit(1)
+            exit_with_error(f"No test named '{test}' in this run.")
 
     for t in tests:
         _render_test(t)
