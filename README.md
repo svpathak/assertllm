@@ -9,17 +9,19 @@ The target user is an engineer who wired up an AI endpoint and needs a smoke tes
 ## How it works
 
 ```
-User writes YAML config
-       |
-CLI reads config, validates it
-       |
+Write a YAML config
+        ↓
+CLI reads and validates it
+        ↓
 For each test:
-  -> Fire input at endpoint, get raw response
-  -> Pass all assertions to judge in one call
-  -> Get pass/fail list back
-  -> Collect results
-       |
-Print summary to terminal, exit 0 or 1
+    → Fire input at endpoint
+    → Get raw response
+    → Send response + assertions to judge LLM
+    → Get pass/fail per assertion
+        ↓
+Print summary to terminal
+        ↓
+Exit 0 (all pass) or 1 (any failure)
 ```
 
 ---
@@ -29,10 +31,6 @@ Print summary to terminal, exit 0 or 1
 ```bash
 git clone https://github.com/svpathak/assertllm.git
 cd assertllm
-
-conda create -n py311 python=3.11
-conda activate py311
-
 pip install -e .
 ```
 
@@ -40,17 +38,24 @@ pip install -e .
 
 ## Setup
 
-Copy `.env.example` to `.env` and fill in your keys:
+Create a `.env` file in your project root with keys for your chosen judge provider:
 
-```bash
-cp .env.example .env
+```
+GROQ_API_KEY=your-groq-api-key-here
+ANTHROPIC_API_KEY=your-anthropic-api-key-here
+OPENAI_API_KEY=your-openai-api-key-here
+OLLAMA_HOST=http://localhost:11434
 ```
 
-Only the key for your chosen judge provider is required.
+Only the key for your chosen judge provider is required. API keys are never declared in the config file -- they are read from `.env` based on the provider.
+
+assertllm reads `.env` from the directory you run it from. Keep your config and `.env` at your project root and run assertllm from there.
 
 ---
 
 ## Config
+
+Create an `assertllm.yaml` in your project:
 
 ```yaml
 judge:
@@ -71,8 +76,6 @@ tests:
       - tone is polite
 ```
 
-API keys are never declared in the config -- they are read from `.env` based on the provider.
-
 Supported judge providers: `groq`, `anthropic`, `openai`, `ollama`.
 
 ---
@@ -81,37 +84,37 @@ Supported judge providers: `groq`, `anthropic`, `openai`, `ollama`.
 
 Run all tests:
 ```bash
-assertllm run config.yaml
+assertllm run assertllm.yaml
 ```
 
 Run a single test by name:
 ```bash
-assertllm run config.yaml --test "refund policy"
+assertllm run assertllm.yaml --test "refund policy"
 ```
 
 Save a snapshot of current endpoint responses:
 ```bash
-assertllm snapshot config.yaml
+assertllm snapshot assertllm.yaml
 ```
 
 Compare current responses against the latest snapshot:
 ```bash
-assertllm diff config.yaml
+assertllm diff assertllm.yaml
 ```
 
 Compare against a specific snapshot:
 ```bash
-assertllm diff config.yaml --snapshot snapshots/config_20250529_143022.json
+assertllm diff assertllm.yaml --snapshot snapshots/assertllm_20250529_143022.json
 ```
 
-List all saved runs (latest first):
+List all saved runs:
 ```bash
 assertllm inspect --list
 ```
 
-List runs for a specific config only:
+List runs for a specific config:
 ```bash
-assertllm inspect --list --config examples/sample1.yaml
+assertllm inspect --list --config assertllm.yaml
 ```
 
 Inspect the latest run:
@@ -121,26 +124,26 @@ assertllm inspect
 
 Inspect the latest run for a specific config:
 ```bash
-assertllm inspect --config examples/sample1.yaml
+assertllm inspect --config assertllm.yaml
 ```
 
 Inspect a specific run file:
 ```bash
-assertllm inspect --run runs/sample1_20250604_103500.json
+assertllm inspect --run runs/assertllm_20250604_103500.json
 ```
 
 Filter to a single test within a run:
 ```bash
-assertllm inspect --config examples/sample1.yaml --test "cricket agent - idk question"
-assertllm inspect --run runs/sample1_20250604_103500.json --test "cricket agent - idk question"
+assertllm inspect --config assertllm.yaml --test "refund policy"
+assertllm inspect --run runs/assertllm_20250604_103500.json --test "refund policy"
 ```
 
 Argument rules for `inspect`:
 
 - `--list` and `--run` cannot be used together. `--list` shows available runs; `--run` inspects a specific one.
 - `--list` and `--test` cannot be used together. Use `--run` or `--config` with `--test` to inspect a specific run.
-- `--run` and `--config` cannot be used together. `--run` is a direct path to a file; `--config` is a hint to find the latest run for that config. Pick one.
-- `--test` requires either `--run` or `--config`. Without one of them it is ambiguous which run to filter from.
+- `--run` and `--config` cannot be used together. `--run` is a direct path; `--config` finds the latest run for that config.
+- `--test` requires either `--run` or `--config`.
 
 Exit code is 0 on all pass, 1 on any failure. Plugs into GitHub Actions with no extra config.
 
@@ -160,17 +163,29 @@ FAIL summarizer -- 1/3 passed
 
 ## Runs
 
-Every `assertllm run` saves a structured JSON record under `runs/` in the current working directory:
+Every `assertllm run` saves a structured JSON record under `runs/` in your project directory:
 
 ```
 runs/
-  sample1_20250604_103500.json
-  sample1_20250604_110200.json
+  assertllm_20250604_103500.json
+  assertllm_20250604_110200.json
 ```
 
-Each record contains the input, raw endpoint response, assertion results, duration, and error state for every test. The `runs/` folder is gitignored by default.
+Each record contains the input, raw endpoint response, assertion results, duration, and error state for every test. Use `assertllm inspect` to browse runs without opening the JSON files directly.
 
-Use `assertllm inspect` to browse run output without opening the JSON files directly.
+---
+
+## Snapshots
+
+Snapshots are saved under `snapshots/` in your project directory:
+
+```
+snapshots/
+  assertllm_20250529_143022.json
+  assertllm_20250530_091500.json
+```
+
+`assertllm diff` auto-picks the latest snapshot for the given config.
 
 ---
 
@@ -200,42 +215,6 @@ The raw response from the endpoint is passed to the judge as-is. The judge LLM f
 
 ---
 
-## Local mock server
-
-A FastAPI mock server is included for testing without a real endpoint. It calls Groq under the hood with real system prompts, so you need `GROQ_API_KEY` set in your `.env`.
-
-```bash
-pip install fastapi uvicorn python-dotenv
-uvicorn examples.mock_server.main:app --port 8000 --reload
-```
-
-Endpoints:
-
-- `POST /chat` -- an angry cricket assistant. Answers cricket questions with attitude, refuses everything else rudely, apologises politely when it doesn't know a cricket answer.
-- `POST /summarize` -- a one-sentence summarizer. Condenses the input `text` field without adding facts.
-- `POST /error` -- always returns 500.
-
-Then run against it:
-```bash
-assertllm run examples/sample1.yaml
-```
-
----
-
-## Snapshots
-
-Snapshots are saved under `snapshots/` in the current working directory, named after the config file and timestamp:
-
-```
-snapshots/
-  sample1_20250529_143022.json
-  sample1_20250530_091500.json
-```
-
-`assertllm diff` auto-picks the latest snapshot for the given config. The `snapshots/` folder is gitignored by default.
-
----
-
 ## Dependencies
 
 - `pydantic` -- models and validation
@@ -247,3 +226,31 @@ snapshots/
 - `openai` -- OpenAI judge
 - `typer` -- CLI
 - `rich` -- terminal output formatting
+
+---
+
+## Development
+
+The repo includes a mock server for testing assertllm locally without a real endpoint. It is not part of the assertllm package.
+
+```bash
+pip install fastapi uvicorn python-dotenv
+```
+
+Add `GROQ_API_KEY` to a `.env` inside `examples/mock_server/`, then start the server:
+
+```bash
+uvicorn examples.mock_server.main:app --port 8000 --reload
+```
+
+Endpoints:
+
+- `POST /chat` -- an angry cricket assistant powered by Groq. Answers cricket questions with attitude, refuses everything else rudely, apologises politely when it doesn't know a cricket answer.
+- `POST /summarize` -- a one-sentence summarizer powered by Groq. Condenses the input `text` field without adding facts.
+- `POST /error` -- always returns 500.
+
+Run the included sample config against it:
+
+```bash
+assertllm run examples/sample1.yaml
+```
