@@ -2,7 +2,6 @@ from groq import Groq
 from pydantic import SecretStr
 from assertllm.judges.base import BaseJudge
 from assertllm.judges.utils import JudgeUtils
-from assertllm.models.schema import JudgeConfig
 
 
 class GroqJudge(BaseJudge):

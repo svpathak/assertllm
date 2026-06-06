@@ -20,6 +20,7 @@ def run_command(
             raise typer.Exit(1)
         config.tests = matched
 
-    results = run(config)
+    results, run_file = run(config, config_path)
     exit_code = report(results)
+    typer.echo(f"Run saved to {run_file}")
     sys.exit(exit_code)
