@@ -1,12 +1,9 @@
 import json
-import os
 import typer
 from pathlib import Path
-from rich.console import Console
 from rich.text import Text
 from assertllm.cli.errors import exit_with_error
-
-console = Console()
+from assertllm.cli.utils import console, all_runs, latest_run, load_run
 
 
 def _validate_args(
@@ -39,23 +36,6 @@ def _validate_args(
             "--test requires either --run or --config.\n"
             "Use --run to point to a specific file, or --config to use the latest run for that config."
         )
-
-
-def _all_runs(stem: str | None) -> list[Path]:
-    runs_dir = Path.cwd() / "runs"
-    if not runs_dir.exists():
-        return []
-    pattern = f"{stem}_*.json" if stem else "*.json"
-    return sorted(
-        runs_dir.glob(pattern),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True
-    )
-
-
-def _latest_run(stem: str | None) -> Path | None:
-    matches = _all_runs(stem)
-    return matches[0] if matches else None
 
 
 def _render_list(runs: list[Path]) -> None:
@@ -110,26 +90,25 @@ def inspect_command(
     run_path: str | None = typer.Option(None, "--run", "-r", help="Path to a specific run file"),
     test: str | None = typer.Option(None, "--test", "-t", help="Filter to a specific test by name"),
     config: str | None = typer.Option(None, "--config", "-c", help="Filter runs by config file name"),
-    list_runs: bool = typer.Option(False, "--list", "-l", help="List all saved runs")
+    list_runs_flag: bool = typer.Option(False, "--list", "-l", help="List all saved runs")
 ) -> None:
-    _validate_args(run_path, config, test, list_runs)
+    _validate_args(run_path, config, test, list_runs_flag)
 
-    if list_runs:
+    if list_runs_flag:
         stem = Path(config).stem if config else None
-        _render_list(_all_runs(stem))
+        _render_list(all_runs(stem))
         return
 
     if run_path:
         resolved = Path(run_path)
     else:
         stem = Path(config).stem if config else None
-        resolved = _latest_run(stem)
+        resolved = latest_run(stem)
 
     if resolved is None or not resolved.exists():
         exit_with_error("No run file found. Run 'assertllm run config.yaml' first.")
 
-    with open(resolved, "r") as f:
-        record = json.load(f)
+    record = load_run(resolved)
 
     console.print(f"\nRun:    {record['run_id']}")
     console.print(f"Config: {record['config']}")
