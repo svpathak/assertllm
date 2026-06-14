@@ -203,7 +203,14 @@ Everything assertllm writes is kept under `.assertllm/` in your project root:
 
 Each config gets its own folder, named from the config file and a short hash to avoid collisions. Each run is a numbered JSON file containing the input, raw endpoint response, assertion results, duration, and error state for every test.
 
-`.assertllm/` is gitignored and managed entirely by the CLI. Use `assertllm inspect` to view runs -- there is no need to open these files directly.
+`.assertllm/` is managed entirely by the CLI. Use `assertllm inspect` to view runs -- there is no need to open these files directly.
+
+IMPORTANT: Add `.assertllm/` and `.env` to your project's `.gitignore`:
+
+```
+.assertllm/
+.env
+```
 
 ---
 
