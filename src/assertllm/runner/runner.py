@@ -7,6 +7,7 @@ from assertllm.models.schema import Config, TestConfig
 from assertllm.caller.http import call_endpoint
 from assertllm.judges import get_judge
 from assertllm.judges.base import BaseJudge
+from assertllm.cli.utils import runs_dir_for_config, next_run_number
 
 
 @dataclass
@@ -68,15 +69,15 @@ def _run_test(test: TestConfig, judge: BaseJudge) -> TestResult:
         )
 
 
-def _save_run(config_path: str, results: list[TestResult]) -> Path:
-    stem = Path(config_path).stem
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    runs_dir = Path.cwd() / "runs"
-    runs_dir.mkdir(exist_ok=True)
-    run_file = runs_dir / f"{stem}_{timestamp}.json"
+def _save_run(config_path: str, results: list[TestResult]) -> tuple[Path, int]:
+    runs_dir = runs_dir_for_config(config_path)
+    runs_dir.mkdir(parents=True, exist_ok=True)
+
+    run_number = next_run_number(config_path)
+    run_file = runs_dir / f"{run_number}.json"
 
     record = {
-        "run_id": f"{stem}_{timestamp}",
+        "run_id": run_number,
         "config": config_path,
         "timestamp": datetime.now().isoformat(),
         "tests": [
@@ -99,11 +100,11 @@ def _save_run(config_path: str, results: list[TestResult]) -> Path:
     with open(run_file, "w") as f:
         json.dump(record, f, indent=2)
 
-    return run_file
+    return run_file, run_number
 
 
-def run(config: Config, config_path: str) -> tuple[list[TestResult], Path]:
+def run(config: Config, config_path: str) -> tuple[list[TestResult], Path, int]:
     judge = get_judge(config.judge)
     results = [_run_test(test, judge) for test in config.tests]
-    run_file = _save_run(config_path, results)
-    return results, run_file
+    run_file, run_number = _save_run(config_path, results)
+    return results, run_file, run_number

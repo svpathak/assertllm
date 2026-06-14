@@ -1,90 +1,58 @@
 import sys
 import typer
-from pathlib import Path
 from rich.text import Text
 from assertllm.cli.errors import exit_with_error
-from assertllm.cli.utils import console, all_runs, load_run
+from assertllm.cli.utils import console, all_run_files, resolve_run_number, load_run
 
 
 def diff_command(
-    config_path: str = typer.Argument(..., help="Path to the YAML config file"),
-    base_path: str | None = typer.Option(None, "--base", help="Older run to use as baseline"),
-    head_path: str | None = typer.Option(None, "--head", help="Newer run to compare against baseline")
+    config: str = typer.Option(..., "--config", "-c", help="Path to the YAML config file"),
+    base: int | None = typer.Option(None, "--base", help="Run number to use as baseline"),
+    head: int | None = typer.Option(None, "--head", help="Run number to compare against baseline")
 ) -> None:
-    stem = Path(config_path).stem
-
-    if head_path and not base_path:
+    if head is not None and base is None:
         exit_with_error(
             "--head cannot be used without --base.\n"
-            "Specify --base to set the baseline, or use --base alone to compare against the latest run."
+            "Specify --base to set the baseline."
         )
 
-    elif base_path and head_path:
-        base_file = Path(base_path)
-        head_file = Path(head_path)
-        if not base_file.exists():
-            exit_with_error(f"Run file not found: {base_path}")
-        if not head_file.exists():
-            exit_with_error(f"Run file not found: {head_path}")
-        if base_file == head_file:
-            exit_with_error("--base and --head point to the same file.")
-        base = load_run(base_file)
-        head = load_run(head_file)
-        if base.get("config") != head.get("config"):
-            exit_with_error(
-                f"Runs belong to different configs.\n"
-                f"  {base_file.name} -> {base.get('config')}\n"
-                f"  {head_file.name} -> {head.get('config')}"
-            )
+    runs = all_run_files(config)
+    if not runs:
+        exit_with_error(
+            f"No runs found for this config.\n"
+            f"Run 'assertllm run {config}' at least twice first."
+        )
 
-    elif base_path:
-        base_file = Path(base_path)
-        if not base_file.exists():
-            exit_with_error(f"Run file not found: {base_path}")
-        base = load_run(base_file)
-        all_sorted = all_runs(stem)
-        if not all_sorted:
-            exit_with_error(f"No runs found for '{stem}'.")
-        head_file = all_sorted[0]
-        if head_file == base_file:
-            exit_with_error(
-                f"Not enough runs for '{stem}' to diff.\n"
-                f"Only one run exists. Run 'assertllm run {config_path}' again to create a second run."
-            )
-        head = load_run(head_file)
-        if head.get("config") != base.get("config"):
-            exit_with_error(
-                f"Latest run belongs to a different config than --base.\n"
-                f"  base: {base_file.name} -> {base.get('config')}\n"
-                f"  head: {head_file.name} -> {head.get('config')}\n"
-                f"Specify --head explicitly to choose a matching run."
-            )
+    base_n = base if base is not None else -2
+    head_n = head if head is not None else -1
 
-    else:
-        all_sorted = all_runs(stem)
-        if not all_sorted:
-            exit_with_error(
-                f"No runs found for '{stem}'.\n"
-                f"Run 'assertllm run {config_path}' at least twice first."
-            )
-        head_file = all_sorted[0]
-        head = load_run(head_file)
-        head_config = head.get("config")
-        candidates = [r for r in all_sorted[1:] if load_run(r).get("config") == head_config]
-        if not candidates:
-            exit_with_error(
-                f"Not enough runs for '{stem}' with the same config to diff.\n"
-                f"Run 'assertllm run {config_path}' again to create a second run."
-            )
-        base_file = candidates[0]
-        base = load_run(base_file)
+    base_file = resolve_run_number(config, base_n)
+    head_file = resolve_run_number(config, head_n)
 
-    console.print(f"\nBase: {base.get('timestamp')}  ({base_file.name})")
-    console.print(f"Head: {head.get('timestamp')}  ({head_file.name})")
+    if base_file is None or head_file is None:
+        if len(runs) < 2:
+            exit_with_error(
+                f"Need at least 2 runs for this config to diff. Only 1 run found.\n"
+                f"Run 'assertllm run {config}' again to create another run."
+            )
+        missing = base_n if base_file is None else head_n
+        exit_with_error(f"No run #{missing} found for this config.")
+
+    if base_file == head_file:
+        exit_with_error(
+            f"--base and --head resolve to the same run (#{load_run(base_file)['run_id']}).\n"
+            f"Run 'assertllm run {config}' again to create another run to compare against."
+        )
+
+    base_record = load_run(base_file)
+    head_record = load_run(head_file)
+
+    console.print(f"\nBase: #{base_record['run_id']}  {base_record.get('timestamp')}")
+    console.print(f"Head: #{head_record['run_id']}  {head_record.get('timestamp')}")
     console.print()
 
-    base_tests = {t["name"]: t for t in base.get("tests", [])}
-    head_tests = {t["name"]: t for t in head.get("tests", [])}
+    base_tests = {t["name"]: t for t in base_record.get("tests", [])}
+    head_tests = {t["name"]: t for t in head_record.get("tests", [])}
     all_names = list(base_tests.keys() | head_tests.keys())
 
     drifted = False

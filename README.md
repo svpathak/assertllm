@@ -55,7 +55,7 @@ assertllm reads `.env` from the directory you run it from. Keep your config and 
 
 ## Config
 
-Create an `assertllm.yaml` in your project:
+Create an `my_assertions.yaml` in your project:
 
 ```yaml
 judge:
@@ -80,76 +80,19 @@ Supported judge providers: `groq`, `anthropic`, `openai`, `ollama`.
 
 ---
 
-## Commands
+## Running tests
 
-Run all tests:
 ```bash
-assertllm run assertllm.yaml
+assertllm run my_assertions.yaml
 ```
 
 Run a single test by name:
+
 ```bash
-assertllm run assertllm.yaml --test "refund policy"
+assertllm run my_assertions.yaml --test "refund policy"
 ```
 
-Save a snapshot of current endpoint responses:
-```bash
-assertllm snapshot assertllm.yaml
-```
-
-Compare current responses against the latest snapshot:
-```bash
-assertllm diff assertllm.yaml
-```
-
-Compare against a specific snapshot:
-```bash
-assertllm diff assertllm.yaml --snapshot snapshots/assertllm_20250529_143022.json
-```
-
-List all saved runs:
-```bash
-assertllm inspect --list
-```
-
-List runs for a specific config:
-```bash
-assertllm inspect --list --config assertllm.yaml
-```
-
-Inspect the latest run:
-```bash
-assertllm inspect
-```
-
-Inspect the latest run for a specific config:
-```bash
-assertllm inspect --config assertllm.yaml
-```
-
-Inspect a specific run file:
-```bash
-assertllm inspect --run runs/assertllm_20250604_103500.json
-```
-
-Filter to a single test within a run:
-```bash
-assertllm inspect --config assertllm.yaml --test "refund policy"
-assertllm inspect --run runs/assertllm_20250604_103500.json --test "refund policy"
-```
-
-Argument rules for `inspect`:
-
-- `--list` and `--run` cannot be used together. `--list` shows available runs; `--run` inspects a specific one.
-- `--list` and `--test` cannot be used together. Use `--run` or `--config` with `--test` to inspect a specific run.
-- `--run` and `--config` cannot be used together. `--run` is a direct path; `--config` finds the latest run for that config.
-- `--test` requires either `--run` or `--config`.
-
-Exit code is 0 on all pass, 1 on any failure. Plugs into GitHub Actions with no extra config.
-
----
-
-## Output
+Output:
 
 ```
 PASS refund policy -- 3/3 passed
@@ -157,35 +100,117 @@ FAIL summarizer -- 1/3 passed
      -> does not add facts not present in the input
 
 2 passed, 1 failed
+
+Run #5 saved. Inspect with: assertllm inspect --config my_assertions.yaml --run 5
 ```
+
+Exit code is 0 on all pass, 1 on any failure. Plugs into GitHub Actions with no extra config.
+
+Every run is saved automatically -- there is nothing to set up or clean up. Runs are numbered sequentially per config, starting at 1.
 
 ---
 
-## Runs
+## Inspecting runs
 
-Every `assertllm run` saves a structured JSON record under `runs/` in your project directory:
+`--config` is required for `inspect` and `diff` so assertllm knows which run history to look at.
+
+List all runs for a config, latest first, with a pass/fail/error summary:
+
+```bash
+assertllm inspect --config my_assertions.yaml --list
+```
 
 ```
-runs/
-  assertllm_20250604_103500.json
-  assertllm_20250604_110200.json
+#5  2026-06-14T17:23:01  4 tests -- 3 passed, 1 failed
+#4  2026-06-14T17:15:50  4 tests -- 4 passed
+#3  2026-06-14T17:14:41  4 tests -- 2 passed, 1 failed, 1 error
 ```
 
-Each record contains the input, raw endpoint response, assertion results, duration, and error state for every test. Use `assertllm inspect` to browse runs without opening the JSON files directly.
+Inspect the latest run:
+
+```bash
+assertllm inspect --config my_assertions.yaml
+```
+
+Inspect a specific run by number, or by negative index counting back from the latest (`-1` is latest, `-2` is the run before that):
+
+```bash
+assertllm inspect --config my_assertions.yaml --run 3
+assertllm inspect --config my_assertions.yaml --run -2
+```
+
+Filter to a single test within a run:
+
+```bash
+assertllm inspect --config my_assertions.yaml --run 3 --test "refund policy"
+```
+
+Argument rules:
+
+- `--list` cannot be combined with `--run` or `--test`.
+- `--run` defaults to `-1` (the latest run) if not given.
 
 ---
 
-## Snapshots
+## Comparing runs
 
-Snapshots are saved under `snapshots/` in your project directory:
+`assertllm diff` compares two runs of the same config and flags assertions that flipped from pass to fail or fail to pass, plus tests that were added or removed between runs.
 
-```
-snapshots/
-  assertllm_20250529_143022.json
-  assertllm_20250530_091500.json
+```bash
+assertllm diff --config my_assertions.yaml
 ```
 
-`assertllm diff` auto-picks the latest snapshot for the given config.
+By default this compares the latest run (`head`, `-1`) against the run before it (`base`, `-2`):
+
+```
+Base: #4  2026-06-14T17:15:50
+Head: #5  2026-06-14T17:23:01
+
+OK    refund policy
+DRIFT summarizer
+      -> does not add facts not present in the input  (PASS -> FAIL)
+OK    cricket question
+```
+
+Pin a specific baseline, comparing it against the latest run:
+
+```bash
+assertllm diff --config my_assertions.yaml --base 2
+```
+
+Compare two specific runs:
+
+```bash
+assertllm diff --config my_assertions.yaml --base 2 --head 4
+```
+
+`--head` cannot be used without `--base`. Exit code is 1 if any test drifted, 0 otherwise.
+
+---
+
+## Where data lives
+
+Everything assertllm writes is kept under `.assertllm/` in your project root:
+
+```
+.assertllm/
+  .runs/
+    my_assertions-a1b2c3d4/
+      1.json
+      2.json
+      ...
+```
+
+Each config gets its own folder, named from the config file and a short hash to avoid collisions. Each run is a numbered JSON file containing the input, raw endpoint response, assertion results, duration, and error state for every test.
+
+`.assertllm/` is managed entirely by the CLI. Use `assertllm inspect` to view runs -- there is no need to open these files directly.
+
+IMPORTANT: Add `.assertllm/` and `.env` to your project's `.gitignore`:
+
+```
+.assertllm/
+.env
+```
 
 ---
 
@@ -231,26 +256,9 @@ The raw response from the endpoint is passed to the judge as-is. The judge LLM f
 
 ## Development
 
-The repo includes a mock server for testing assertllm locally without a real endpoint. It is not part of the assertllm package.
-
-```bash
-pip install fastapi uvicorn python-dotenv
-```
-
-Add `GROQ_API_KEY` to a `.env` inside `examples/mock_server/`, then start the server:
+A mock server is included under `examples/mock_server/` for testing assertllm locally without a real endpoint. It is not part of the assertllm package -- it requires `fastapi`, `uvicorn`, `python-dotenv`, and its own `.env` with `GROQ_API_KEY`.
 
 ```bash
 uvicorn examples.mock_server.main:app --port 8000 --reload
-```
-
-Endpoints:
-
-- `POST /chat` -- an angry cricket assistant powered by Groq. Answers cricket questions with attitude, refuses everything else rudely, apologises politely when it doesn't know a cricket answer.
-- `POST /summarize` -- a one-sentence summarizer powered by Groq. Condenses the input `text` field without adding facts.
-- `POST /error` -- always returns 500.
-
-Run the included sample config against it:
-
-```bash
 assertllm run examples/sample1.yaml
 ```

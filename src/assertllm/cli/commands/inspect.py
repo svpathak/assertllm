@@ -1,18 +1,12 @@
 import json
 import typer
-from pathlib import Path
 from rich.text import Text
 from assertllm.cli.errors import exit_with_error
-from assertllm.cli.utils import console, all_runs, latest_run, load_run
+from assertllm.cli.utils import console, all_run_files, resolve_run_number, load_run
 
 
-def _validate_args(
-    run_path: str | None,
-    config: str | None,
-    test: str | None,
-    list_runs: bool
-) -> None:
-    if list_runs and run_path:
+def _validate_args(run_number: int | None, test: str | None, list_runs: bool) -> None:
+    if list_runs and run_number is not None:
         exit_with_error(
             "--list and --run cannot be used together.\n"
             "--list shows available runs. --run inspects a specific one."
@@ -21,33 +15,47 @@ def _validate_args(
     if list_runs and test:
         exit_with_error(
             "--list and --test cannot be used together.\n"
-            "--list shows available runs. Use --run or --config with --test to inspect a specific run."
-        )
-
-    if run_path and config:
-        exit_with_error(
-            "--run and --config cannot be used together.\n"
-            "--run points to a specific file directly.\n"
-            "Use --config only when you want the latest run for a given config."
-        )
-
-    if test and not run_path and not config:
-        exit_with_error(
-            "--test requires either --run or --config.\n"
-            "Use --run to point to a specific file, or --config to use the latest run for that config."
+            "--list shows available runs. Use --run with --test to inspect a specific run."
         )
 
 
-def _render_list(runs: list[Path]) -> None:
-    if not runs:
-        console.print("No runs found.", style="dim")
+def _build_summary(tests: list[dict]) -> Text:
+    total = len(tests)
+    errors = sum(1 for t in tests if t.get("is_error"))
+    passed = sum(
+        1 for t in tests
+        if not t.get("is_error") and all(a["passed"] for a in (t.get("assertions") or []))
+    )
+    failed = total - passed - errors
+
+    summary = Text(f"{total} tests -- ")
+    if passed:
+        summary.append(f"{passed} passed", style="green")
+    if failed:
+        if passed:
+            summary.append(", ")
+        summary.append(f"{failed} failed", style="red")
+    if errors:
+        if passed or failed:
+            summary.append(", ")
+        summary.append(f"{errors} error", style="red")
+    if not passed and not failed and not errors:
+        summary.append("0 passed", style="dim")
+    return summary
+
+
+def _render_list(config: str) -> None:
+    files = all_run_files(config)
+    if not files:
+        console.print("No runs found for this config.", style="dim")
         return
 
-    for run_path in runs:
-        try:
-            console.print(run_path.relative_to(Path.cwd()))
-        except ValueError:
-            console.print(run_path)
+    for f in reversed(files):
+        record = load_run(f)
+        tests = record.get("tests", [])
+        line = Text(f"#{record.get('run_id')}  {record.get('timestamp')}  ")
+        line.append_text(_build_summary(tests))
+        console.print(line)
 
 
 def _render_test(test: dict) -> None:
@@ -87,30 +95,29 @@ def _render_test(test: dict) -> None:
 
 
 def inspect_command(
-    run_path: str | None = typer.Option(None, "--run", "-r", help="Path to a specific run file"),
+    config: str = typer.Option(..., "--config", "-c", help="Path to the YAML config file"),
+    run_number: int | None = typer.Option(None, "--run", "-r", help="Run number. Negative values count from the latest, e.g. -1 is the latest run"),
     test: str | None = typer.Option(None, "--test", "-t", help="Filter to a specific test by name"),
-    config: str | None = typer.Option(None, "--config", "-c", help="Filter runs by config file name"),
-    list_runs_flag: bool = typer.Option(False, "--list", "-l", help="List all saved runs")
+    list_runs_flag: bool = typer.Option(False, "--list", "-l", help="List all saved runs for this config")
 ) -> None:
-    _validate_args(run_path, config, test, list_runs_flag)
+    _validate_args(run_number, test, list_runs_flag)
 
     if list_runs_flag:
-        stem = Path(config).stem if config else None
-        _render_list(all_runs(stem))
+        _render_list(config)
         return
 
-    if run_path:
-        resolved = Path(run_path)
-    else:
-        stem = Path(config).stem if config else None
-        resolved = latest_run(stem)
+    n = run_number if run_number is not None else -1
+    resolved = resolve_run_number(config, n)
 
-    if resolved is None or not resolved.exists():
-        exit_with_error("No run file found. Run 'assertllm run config.yaml' first.")
+    if resolved is None:
+        exit_with_error(
+            f"No run #{n} found for this config.\n"
+            f"Run 'assertllm run {config}' first, or use --list to see available runs."
+        )
 
     record = load_run(resolved)
 
-    console.print(f"\nRun:    {record['run_id']}")
+    console.print(f"\nRun:    #{record['run_id']}")
     console.print(f"Config: {record['config']}")
     console.print(f"Time:   {record['timestamp']}")
 
