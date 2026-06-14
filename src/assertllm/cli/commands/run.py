@@ -20,7 +20,7 @@ def run_command(
             raise typer.Exit(1)
         config.tests = matched
 
-    results, run_file = run(config, config_path)
+    results, run_file, run_number = run(config, config_path)
     exit_code = report(results)
-    typer.echo(f"Run saved to {run_file}")
+    typer.echo(f"Run #{run_number} saved. Inspect with: assertllm inspect --config {config_path} --run {run_number}")
     sys.exit(exit_code)
