@@ -1,3 +1,4 @@
+import os
 import re
 import yaml
 from pydantic import ValidationError
@@ -8,11 +9,18 @@ from assertllm.settings import settings
 def _resolve_env_vars(value: object) -> object:
     if isinstance(value, str):
         def replacer(match: re.Match) -> str:
-            var_name = match.group(1).lower()
+            raw_name = match.group(1)
+            var_name = raw_name.lower()
+
             resolved = getattr(settings, var_name, None)
-            if resolved is None:
-                raise ValueError(f"Environment variable '{match.group(1)}' is not set")
-            return resolved.get_secret_value() if hasattr(resolved, "get_secret_value") else str(resolved)
+            if resolved is not None:
+                return resolved.get_secret_value() if hasattr(resolved, "get_secret_value") else str(resolved)
+
+            env_value = os.getenv(raw_name)
+            if env_value is not None:
+                return env_value
+
+            raise ValueError(f"Environment variable '{raw_name}' is not set")
         return re.sub(r"\$\{(\w+)\}", replacer, value)
     if isinstance(value, dict):
         return {k: _resolve_env_vars(v) for k, v in value.items()}
