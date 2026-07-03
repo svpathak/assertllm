@@ -1,0 +1,41 @@
+judge:
+  provider: groq
+  model: llama-3.3-70b-versatile
+
+tests:
+  - name: bearer token (correct)
+    endpoint: http://localhost:8001/auth/bearer
+    method: POST
+    headers:
+      Authorization: Bearer ${MOCK_AUTH_TOKEN}
+    body:
+      message: "hello"
+    assert:
+      - mentions authorized
+
+  - name: api key header (correct)
+    endpoint: http://localhost:8001/auth/apikey
+    method: POST
+    headers:
+      X-API-Key: ${MOCK_AUTH_TOKEN}
+    body:
+      message: "hello"
+    assert:
+      - mentions authorized
+
+  - name: query param (correct)
+    endpoint: http://localhost:8001/auth/query?api_key=${MOCK_AUTH_TOKEN}
+    method: POST
+    body:
+      message: "hello"
+    assert:
+      - mentions authorized
+
+  - name: body field (correct)
+    endpoint: http://localhost:8001/auth/body
+    method: POST
+    body:
+      api_key: ${MOCK_AUTH_TOKEN}
+      message: "hello"
+    assert:
+      - mentions authorized

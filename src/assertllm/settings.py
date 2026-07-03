@@ -1,5 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, SecretStr 
+from pydantic import Field, SecretStr
+from dotenv import load_dotenv
+from pathlib import Path
+
+load_dotenv(Path.cwd() / ".env", override=False) # load this for CI secrets or auth-related tokens
 
 class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = Field(default=None, alias="ANTHROPIC_API_KEY")

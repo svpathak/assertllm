@@ -260,5 +260,5 @@ A mock server is included under `examples/mock_server/` for testing assertllm lo
 
 ```bash
 uvicorn examples.mock_server.main:app --port 8000 --reload
-assertllm run examples/sample1.yaml
+assertllm run examples/configs/sample1.yaml
 ```
