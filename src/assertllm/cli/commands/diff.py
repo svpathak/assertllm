@@ -7,9 +7,15 @@ from assertllm.cli.utils import console, all_run_files, resolve_run_number, load
 
 def diff_command(
     config: str = typer.Option(..., "--config", "-c", help="Path to the YAML config file"),
-    base: int | None = typer.Option(None, "--base", help="Run number to use as baseline"),
-    head: int | None = typer.Option(None, "--head", help="Run number to compare against baseline")
+    base: int | None = typer.Option(None, "--base", help="Run number to use as baseline. Negative values count from the latest, e.g. -2 is the run before latest. Defaults to -2."),
+    head: int | None = typer.Option(None, "--head", help="Run number to compare against baseline. Negative values count from the latest. Defaults to -1. Cannot be used without --base.")
 ) -> None:
+    """Compare two saved runs and flag behavioral drift.
+
+    Shows assertions that flipped between runs (PASS -> FAIL or FAIL -> PASS),
+    plus tests that were added or removed. Defaults to comparing the last two runs.
+    Exit code is 1 if any drift is detected, 0 otherwise.
+    """
     if head is not None and base is None:
         exit_with_error(
             "--head cannot be used without --base.\n"

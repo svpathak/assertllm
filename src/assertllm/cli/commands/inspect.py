@@ -100,6 +100,11 @@ def inspect_command(
     test: str | None = typer.Option(None, "--test", "-t", help="Filter to a specific test by name"),
     list_runs_flag: bool = typer.Option(False, "--list", "-l", help="List all saved runs for this config")
 ) -> None:
+    """Inspect a saved run in detail.
+
+    Shows the input, raw response, assertion results, and duration for each test.
+    Defaults to the latest run if --run is not specified.
+    """
     _validate_args(run_number, test, list_runs_flag)
 
     if list_runs_flag:
