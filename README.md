@@ -78,6 +78,23 @@ tests:
 
 Supported judge providers: `groq`, `anthropic`, `openai`, `ollama`.
 
+By default assertllm expects a 2xx response. If you want to test that your endpoint correctly returns an error status, declare `expected_status`:
+
+```yaml
+  - name: bad auth returns 401
+      endpoint: https://your-api.com/chat
+      method: POST
+      headers:
+        Authorization: Bearer invalid-token
+      body:
+        message: "hello"
+      expected_status: 401
+      assert:
+        - response indicates unauthorized or invalid token
+```
+
+If the endpoint returns a status that does not match expected_status, the test is recorded as an fail. If it matches, the response body is passed to the judge as normal.
+
 ---
 
 ## Running tests
@@ -201,7 +218,7 @@ Everything assertllm writes is kept under `.assertllm/` in your project root:
       ...
 ```
 
-Each config gets its own folder, named from the config file and a short hash to avoid collisions. Each run is a numbered JSON file containing the input, raw endpoint response, assertion results, duration, and error state for every test.
+Each config gets its own folder, named from the config file and a short hash to avoid collisions. Each run is a numbered JSON file containing the input, raw endpoint response, HTTP status code, assertion results, duration, and error state for every test.
 
 `.assertllm/` is managed entirely by the CLI. Use `assertllm inspect` to view runs -- there is no need to open these files directly.
 

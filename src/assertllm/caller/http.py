@@ -2,7 +2,7 @@ import httpx
 from assertllm.models.schema import TestConfig
 
 
-def call_endpoint(test: TestConfig) -> str:
+def call_endpoint(test: TestConfig) -> tuple[int, str]:
     with httpx.Client() as client:
         response = client.request(
             method=test.method,
@@ -11,5 +11,4 @@ def call_endpoint(test: TestConfig) -> str:
             json=test.body,
             timeout=30.0
         )
-        response.raise_for_status()
-        return response.text
+        return response.status_code, response.text

@@ -4,58 +4,47 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from assertllm.models.schema import Config, TestConfig
+from assertllm.models.results import AssertionResult, TestResult
 from assertllm.caller.http import call_endpoint
 from assertllm.judges import get_judge
 from assertllm.judges.base import BaseJudge
 from assertllm.storage.runs import runs_dir_for_config, next_run_number
 
 
-@dataclass
-class AssertionResult:
-    assertion: str
-    passed: bool
-
-
-@dataclass
-class TestResult:
-    name: str
-    input: dict
-    assertion_results: list[AssertionResult] = field(default_factory=list)
-    response: str | None = None
-    error: str | None = None
-    duration_ms: int = 0
-
-    @property
-    def is_error(self) -> bool:
-        return self.error is not None
-
-    @property
-    def passed(self) -> bool:
-        return not self.is_error and all(r.passed for r in self.assertion_results)
-
-    @property
-    def pass_count(self) -> int:
-        return sum(1 for r in self.assertion_results if r.passed)
-
-    @property
-    def total_count(self) -> int:
-        return len(self.assertion_results)
-
-
 def _run_test(test: TestConfig, judge: BaseJudge) -> TestResult:
     start = time.monotonic()
     try:
-        response = call_endpoint(test)
+        status_code, response = call_endpoint(test)
+        duration_ms = int((time.monotonic() - start) * 1000)
+
+        if test.expected_status is not None:
+            if status_code != test.expected_status:
+                return TestResult(
+                    name=test.name,
+                    input=test.body,
+                    status_code=status_code,
+                    error=f"expected status {test.expected_status}, got {status_code}",
+                    duration_ms=duration_ms
+                )
+        elif not (200 <= status_code < 300):
+            return TestResult(
+                name=test.name,
+                input=test.body,
+                status_code=status_code,
+                error=f"unexpected status {status_code}",
+                duration_ms=duration_ms
+            )
+
         verdicts = judge.evaluate(response, test.assertions)
         assertion_results = [
             AssertionResult(assertion=a, passed=v)
             for a, v in zip(test.assertions, verdicts)
         ]
-        duration_ms = int((time.monotonic() - start) * 1000)
         return TestResult(
             name=test.name,
             input=test.body,
             response=response,
+            status_code=status_code,
             assertion_results=assertion_results,
             duration_ms=duration_ms
         )
@@ -67,7 +56,6 @@ def _run_test(test: TestConfig, judge: BaseJudge) -> TestResult:
             error=str(e),
             duration_ms=duration_ms
         )
-
 
 def _save_run(config_path: str, results: list[TestResult]) -> tuple[Path, int]:
     runs_dir = runs_dir_for_config(config_path)
@@ -85,6 +73,7 @@ def _save_run(config_path: str, results: list[TestResult]) -> tuple[Path, int]:
                 "name": r.name,
                 "is_error": r.is_error,
                 "error": r.error,
+                "status_code": r.status_code,
                 "input": r.input,
                 "response": r.response,
                 "duration_ms": r.duration_ms,

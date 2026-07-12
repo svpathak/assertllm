@@ -1,6 +1,6 @@
 from rich.console import Console
 from rich.text import Text
-from assertllm.runner.runner import TestResult
+from assertllm.models.results import TestResult
 
 console = Console()
 

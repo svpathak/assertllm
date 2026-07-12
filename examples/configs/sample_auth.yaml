@@ -39,3 +39,14 @@ tests:
       message: "hello"
     assert:
       - mentions authorized
+  
+  - name: bad auth returns 401
+    endpoint: http://localhost:8001/auth/bearer
+    method: POST
+    headers:
+      Authorization: Bearer invalid-token
+    body:
+      message: "hello"
+    expected_status: 401
+    assert:
+      - response indicates unauthorized or invalid token
