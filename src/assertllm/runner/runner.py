@@ -7,7 +7,7 @@ from assertllm.models.schema import Config, TestConfig
 from assertllm.caller.http import call_endpoint
 from assertllm.judges import get_judge
 from assertllm.judges.base import BaseJudge
-from assertllm.cli.utils import runs_dir_for_config, next_run_number
+from assertllm.storage.runs import runs_dir_for_config, next_run_number
 
 
 @dataclass

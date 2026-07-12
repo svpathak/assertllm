@@ -1,5 +1,4 @@
-
-PROMPT_TEMPLATE = """\
+PROMPT_TEMPLATE = """
 Here is an API response:
 <response>
 {response}
