@@ -10,6 +10,11 @@ def run_command(
     config_path: str = typer.Argument(..., help="Path to the YAML config file"),
     test: str | None = typer.Option(None, "--test", help="Run a single test by name"),
 ) -> None:
+    """Run all tests in a config file against the configured endpoint.
+
+    Exit code is 0 if all tests pass, 1 if any fail or error.
+    Every run is saved automatically and can be inspected with: assertllm inspect.
+    """
     config = load_config(config_path)
     validate_config(config)
 
