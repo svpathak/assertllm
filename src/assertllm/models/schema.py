@@ -31,6 +31,7 @@ class TestConfig(BaseModel):
     headers: dict[str, str] = {}
     body: dict
     assertions: list[str] = Field(alias="assert")
+    expected_status: int | None = None
 
     @field_validator("method")
     @classmethod
@@ -55,6 +56,13 @@ class TestConfig(BaseModel):
         for i, item in enumerate(v):
             if not isinstance(item, str) or not item.strip():
                 raise ValueError(f"assertion at index {i} is empty or not a string")
+        return v
+    
+    @field_validator("expected_status")
+    @classmethod
+    def expected_status_must_be_valid(cls, v: int | None) -> int | None:
+        if v is not None and not (100 <= v <= 599):
+            raise ValueError(f"expected_status '{v}' is not a valid HTTP status code")
         return v
 
     @field_validator("name")
