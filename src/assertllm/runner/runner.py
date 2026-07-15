@@ -8,7 +8,7 @@ from assertllm.models.results import AssertionResult, TestResult
 from assertllm.caller.http import call_endpoint
 from assertllm.judges import get_judge
 from assertllm.judges.base import BaseJudge
-from assertllm.storage.runs import runs_dir_for_config, next_run_number
+from assertllm.storage.runs import runs_dir_for_config, next_run_number, ensure_assertllm_gitignore
 
 
 def _run_test(test: TestConfig, judge: BaseJudge) -> TestResult:
@@ -58,6 +58,7 @@ def _run_test(test: TestConfig, judge: BaseJudge) -> TestResult:
         )
 
 def _save_run(config_path: str, results: list[TestResult]) -> tuple[Path, int]:
+    ensure_assertllm_gitignore()
     runs_dir = runs_dir_for_config(config_path)
     runs_dir.mkdir(parents=True, exist_ok=True)
 
