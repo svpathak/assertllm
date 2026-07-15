@@ -26,6 +26,13 @@ def config_to_folder(config_path: str) -> str:
 def runs_dir_for_config(config_path: str) -> Path:
     return Path.cwd() / ASSERTLLM_DIR / RUNS_DIR / config_to_folder(config_path)
 
+def ensure_assertllm_gitignore() -> None:
+    assertllm_root = Path.cwd() / ASSERTLLM_DIR
+    gitignore_path = assertllm_root / ".gitignore"
+    if gitignore_path.exists():
+        return
+    assertllm_root.mkdir(parents=True, exist_ok=True)
+    gitignore_path.write_text("*\n")
 
 def all_run_files(config_path: str) -> list[Path]:
     """Run files for a config, sorted ascending by run number."""

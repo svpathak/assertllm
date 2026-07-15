@@ -4,19 +4,24 @@ from assertllm.config.loader import load_config
 from assertllm.config.validator import validate_config
 from assertllm.runner.runner import run
 from assertllm.reporter.terminal import report
+from assertllm.cli.errors import exit_with_error
 
 
 def run_command(
     config_path: str = typer.Argument(..., help="Path to the YAML config file"),
-    test: str | None = typer.Option(None, "--test", help="Run a single test by name"),
+    test: str | None = typer.Option(None, "--test", help="Run a single test by name")
 ) -> None:
     """Run all tests in a config file against the configured endpoint.
 
     Exit code is 0 if all tests pass, 1 if any fail or error.
     Every run is saved automatically and can be inspected with: assertllm inspect.
     """
-    config = load_config(config_path)
-    validate_config(config)
+    try:
+        config = load_config(config_path)
+        validate_config(config)
+    except (ValueError, OSError) as e:
+        exit_with_error(str(e))
+        return
 
     if test:
         matched = [t for t in config.tests if t.name == test]
