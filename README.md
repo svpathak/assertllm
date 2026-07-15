@@ -44,7 +44,6 @@ Create a `.env` file in your project root with keys for your chosen judge provid
 GROQ_API_KEY=your-groq-api-key-here
 ANTHROPIC_API_KEY=your-anthropic-api-key-here
 OPENAI_API_KEY=your-openai-api-key-here
-OLLAMA_HOST=http://localhost:11434
 ```
 
 Only the key for your chosen judge provider is required. API keys are never declared in the config file -- they are read from `.env` based on the provider.
@@ -76,24 +75,24 @@ tests:
       - tone is polite
 ```
 
-Supported judge providers: `groq`, `anthropic`, `openai`, `ollama`.
+Supported judge providers: `groq`, `anthropic`, `openai`.
 
-By default assertllm expects a 2xx response. If you want to test that your endpoint correctly returns an error status, declare `expected_status`:
+By default assertllm expects a 2xx response. To test that your endpoint correctly returns an error status, declare `expected_status`:
 
 ```yaml
   - name: bad auth returns 401
-      endpoint: https://your-api.com/chat
-      method: POST
-      headers:
-        Authorization: Bearer invalid-token
-      body:
-        message: "hello"
-      expected_status: 401
-      assert:
-        - response indicates unauthorized or invalid token
+    endpoint: https://your-api.com/chat
+    method: POST
+    headers:
+      Authorization: Bearer invalid-token
+    body:
+      message: "hello"
+    expected_status: 401
+    assert:
+      - response indicates unauthorized or invalid token
 ```
 
-If the endpoint returns a status that does not match expected_status, the test is recorded as an fail. If it matches, the response body is passed to the judge as normal.
+If the endpoint returns a status that does not match `expected_status`, the test is recorded as a failure. If it matches, the response body is passed to the judge as normal.
 
 ---
 
@@ -222,7 +221,7 @@ Each config gets its own folder, named from the config file and a short hash to 
 
 `.assertllm/` is managed entirely by the CLI. Use `assertllm inspect` to view runs -- there is no need to open these files directly.
 
-IMPORTANT: Add `.assertllm/` and `.env` to your project's `.gitignore`:
+assertllm writes its own `.gitignore` inside `.assertllm/` automatically, so its contents are never tracked even if you forget. As a safety net, it is still worth adding `.assertllm/` and `.env` explicitly to your project's `.gitignore`:
 
 ```
 .assertllm/
@@ -268,6 +267,17 @@ The raw response from the endpoint is passed to the judge as-is. The judge LLM f
 - `openai` -- OpenAI judge
 - `typer` -- CLI
 - `rich` -- terminal output formatting
+
+---
+
+## Running the test suite
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+Tests mock all external calls (HTTP, judge SDKs) -- no API keys or running servers required.
 
 ---
 
