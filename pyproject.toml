@@ -24,3 +24,13 @@ assertllm = "assertllm.cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/assertllm"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "respx>=0.21",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_classes = ["*Tests"]
