@@ -2,7 +2,7 @@
 
 A CLI tool that fires inputs at an AI endpoint and evaluates outputs using plain-English behavioral assertions, judged by a second LLM.
 
-The target user is an engineer who wired up an AI endpoint and needs a smoke test that runs in CI. No platform to learn. Just a YAML file and an exit code.
+The target user is an engineer who wired up an AI endpoint and needs a smoke test that runs in CI. No platform to learn. Just a YAML file and an exit code. That's it!
 
 ---
 
