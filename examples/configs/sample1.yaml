@@ -1,0 +1,42 @@
+judge:
+  provider: groq
+  model: llama-3.3-70b-versatile
+
+tests:
+  - name: cricket agent - cricket question
+    endpoint: http://localhost:8000/chat
+    method: POST
+    body:
+      message: "What is the highest ODI score made by a male batter?"
+    assert:
+      - mentions a number
+      - tone is crappy or angry
+
+  - name: cricket agent - idk question
+    endpoint: http://localhost:8000/chat
+    method: POST
+    body:
+      message: "Which team won IPL 2026?"
+    assert:
+      - mentions that it does not know the answer
+      - tone is polite and calm
+      - has an apology
+
+  - name: cricket agent - invalid question
+    endpoint: http://localhost:8000/chat
+    method: POST
+    body:
+      message: "What is the order of reactivity of haloacids?"
+    assert:
+      - mentions that question is out-of-scope or invalid
+      - tone is abusive and angry
+
+  - name: summarizer
+    endpoint: http://127.0.0.1:8000/summarize
+    method: POST
+    body:
+      text: "The quarterly earnings exceeded expectations by 12%. This is a significant rise from expectations of 10.5%."
+    assert:
+      - contains the key financial result
+      - does not add facts not present in the input
+      - is one sentence or less

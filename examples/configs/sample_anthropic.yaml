@@ -1,0 +1,26 @@
+judge:
+  provider: anthropic
+  model: claude-haiku-4-5
+
+tests:
+  - name: refund policy
+    endpoint: https://your-api.com/chat
+    method: POST
+    headers:
+      Authorization: Bearer ${MY_TOKEN}
+    body:
+      message: "What is your return policy?"
+    assert:
+      - mentions a 30-day return window
+      - does not mention a phone number
+      - tone is polite
+
+  - name: summarizer
+    endpoint: https://your-api.com/summarize
+    method: POST
+    body:
+      text: "The quarterly earnings exceeded expectations by 12%."
+    assert:
+      - contains the key financial result
+      - does not add facts not present in the input
+      - is one sentence or less

@@ -1,0 +1,34 @@
+judge:
+  provider: openai
+  model: gpt-4o-mini
+
+tests:
+  - name: refund policy (pass)
+    endpoint: http://localhost:8000/chat
+    method: POST
+    body:
+      message: "What is your return policy?"
+    assert:
+      - mentions a 30-day return window
+      - does not mention a phone number
+      - tone is polite
+
+  - name: refund policy (fail)
+    endpoint: http://localhost:8000/chat/fail
+    method: POST
+    body:
+      message: "What is your return policy?"
+    assert:
+      - mentions a 30-day return window
+      - does not mention a phone number
+      - tone is polite
+
+  - name: summarizer (pass)
+    endpoint: http://localhost:8000/summarize
+    method: POST
+    body:
+      text: "The quarterly earnings exceeded expectations by 12%."
+    assert:
+      - contains the key financial result
+      - does not add facts not present in the input
+      - is one sentence or less

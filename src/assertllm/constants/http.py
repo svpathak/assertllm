@@ -1,0 +1,2 @@
+ALLOWED_METHODS: set[str] = {"GET", "POST", "PUT", "PATCH", "DELETE"}
+DEFAULT_METHOD: str = "POST"

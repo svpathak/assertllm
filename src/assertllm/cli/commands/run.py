@@ -1,0 +1,36 @@
+import sys
+import typer
+from assertllm.config.loader import load_config
+from assertllm.config.validator import validate_config
+from assertllm.runner.runner import run
+from assertllm.reporter.terminal import report
+from assertllm.cli.errors import exit_with_error
+
+
+def run_command(
+    config_path: str = typer.Argument(..., help="Path to the YAML config file"),
+    test: str | None = typer.Option(None, "--test", help="Run a single test by name")
+) -> None:
+    """Run all tests in a config file against the configured endpoint.
+
+    Exit code is 0 if all tests pass, 1 if any fail or error.
+    Every run is saved automatically and can be inspected with: assertllm inspect.
+    """
+    try:
+        config = load_config(config_path)
+        validate_config(config)
+    except (ValueError, OSError) as e:
+        exit_with_error(str(e))
+        return
+
+    if test:
+        matched = [t for t in config.tests if t.name == test]
+        if not matched:
+            typer.echo(f"No test named '{test}' found in config")
+            raise typer.Exit(1)
+        config.tests = matched
+
+    results, run_file, run_number = run(config, config_path)
+    exit_code = report(results)
+    typer.echo(f"Run #{run_number} saved. Inspect with: assertllm inspect --config {config_path} --run {run_number}")
+    sys.exit(exit_code)
