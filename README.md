@@ -1,4 +1,5 @@
 # assertllm
+<<<<<<< HEAD
 
 A CLI tool that fires inputs at an AI endpoint and evaluates outputs using plain-English behavioral assertions, judged by a second LLM.
 
@@ -289,3 +290,6 @@ A mock server is included under `examples/mock_server/` for testing assertllm lo
 uvicorn examples.mock_server.main:app --port 8000 --reload
 assertllm run examples/configs/sample1.yaml
 ```
+=======
+A CLI tool that fires inputs at an AI endpoint and evaluates outputs using plain-English behavioral assertions.
+>>>>>>> origin/main
